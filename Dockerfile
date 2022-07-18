@@ -1,6 +1,6 @@
 #syntax=docker/dockerfile:1.2
 
-FROM golang:1.17 as builder
+FROM golang:1.18 as builder
 
 WORKDIR /go/src/github.com/challenai/lightflow
 COPY go.mod .
