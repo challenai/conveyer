@@ -19,7 +19,7 @@
 - nats
 - nsq
 - kafka
-- http
+- http request
 - stdin
 - file system
 - Alibaba OSS
@@ -37,8 +37,8 @@
 - nats
 - nsq
 - kafka
-- http
-- stdin
+- http request
+- stdout
 - file system
 - Alibaba OSS
 - Amazon S3
