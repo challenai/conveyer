@@ -1,0 +1,53 @@
+# TODO
+
+## feature
+
+- rate limit
+- cache
+- reliable
+- interuptable
+
+## Source
+
+- MySQL
+- clickhouse
+- mongodb
+- Redis
+- HBase
+- elastic search
+- Cassandra
+- nats
+- nsq
+- kafka
+- http
+- stdin
+- file system
+- Alibaba OSS
+- Amazon S3
+
+## Sink
+
+- MySQL
+- clickhouse
+- mongodb
+- Redis
+- HBase
+- elastic search
+- Cassandra
+- nats
+- nsq
+- kafka
+- http
+- stdin
+- file system
+- Alibaba OSS
+- Amazon S3
+- http
+- http server
+
+## Encoding
+
+- JSON
+- CSV
+- Avro
+- Excel (export only)
