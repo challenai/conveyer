@@ -9,16 +9,14 @@ RUN go mod download
 
 COPY . .
 
-RUN GOOS=linux CGO_ENABLED=0 go build -v -ldflags '-extldflags -static' -o lightflow cmd/main.go
-
 ####################################################################################################
 
-FROM scratch as argocli
+FROM scratch as fsmysql
 
 USER 8737
 
 WORKDIR /home/lightflow
 
-COPY --from=builder /go/src/github.com/challenai/lightflow/lightflow /bin/
+COPY --from=builder /go/src/github.com/challenai/lightflow/fsmysql /bin/
 
-ENTRYPOINT [ "lightflow" ]
+ENTRYPOINT [ "fsmysql" ]
