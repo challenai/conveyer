@@ -6,10 +6,16 @@ type Type byte
 
 type Transformer interface {
 	// notify
-	Castable(src Type, dest Type) error
-	CastableRow(src []Type, dest []Type) error
-	Cast(src codec.Bytes) (any, error)
-	CastRow(src []codec.Bytes) ([]any, error)
+	SourceTypes() []Type
+
+	SinkTypes() []Type
+	SetSinkTypes([]Type)
+
+	Castable() error
+	Cast(src []codec.Bytes) ([]any, error)
+	CastTypes() []Type
+
+	CastableType(src Type, dest Type) error
+	CastByte(src codec.Bytes) (any, error)
 	CastType(Type) Type
-	CastTypesRow([]Type) []Type
 }
