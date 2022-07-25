@@ -11,4 +11,5 @@ type Sink interface {
 	WriteRow([]any) error
 	Close() error
 	table.TableManager
+	// generateBatchWatermark() string
 }
