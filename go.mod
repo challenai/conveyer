@@ -1,4 +1,4 @@
-module github.com/challenai/lightflow
+module github.com/challenai/conveyer
 
 go 1.18
 
