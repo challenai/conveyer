@@ -5,27 +5,40 @@ import "github.com/challenai/conveyer/pkg/codec"
 type Belt struct {
 	// default capacity is 1.
 	capacity int
-	ch       chan [][]codec.Bytes
+	// channel for bytes
+	ch chan [][]codec.Bytes
 	// tell if the channel is half-closed.
-	timeWait bool
+	timeWaitPeriod bool
 }
 
-func (b *Belt) Deliever([][]codec.Bytes) error {
+func NewBelt(capacity int) *Belt {
+	return &Belt{
+		capacity:       capacity,
+		ch:             make(chan [][]codec.Bytes, capacity),
+		timeWaitPeriod: false,
+	}
+}
+
+func (b *Belt) Deliever(by [][]codec.Bytes) error {
+	b.ch <- by
 	return nil
 }
 
-func (b *Belt) Metrics(dsl string) (Stat, error) {
+func (b *Belt) Metrics() (Stat, error) {
 	return 0, nil
 }
 
-func (b *Belt) Accept() []codec.Bytes {
-	return nil
+func (b *Belt) Accept() [][]codec.Bytes {
+	return <-b.ch
 }
 
-func (b *Belt) Next() {
+// func (b *Belt) Next() {
+// }
 
+func (b *Belt) Close() {
+	b.timeWaitPeriod = true
 }
 
 func (b *Belt) HasNext() bool {
-	return false
+	return b.timeWaitPeriod
 }
