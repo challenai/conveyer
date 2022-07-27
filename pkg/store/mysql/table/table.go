@@ -9,22 +9,22 @@ import (
 )
 
 type tableMySQL struct {
-	db        *sql.DB
-	tableName string
-	types     []transform.Type
+	db          *sql.DB
+	fieldsCount int
+	table       string
+	fields      []transform.Field
 }
 
-func NewMySQLTableManager(db *sql.DB, tableName string) table.TableManager {
+func NewMySQLTableManager(db *sql.DB) table.TableManager {
 	tm := &tableMySQL{
-		db:        db,
-		tableName: tableName,
+		db: db,
 	}
 	return tm
 }
 
-func (t *tableMySQL) ScanTypes(dsl string) ([]transform.Type, error) {
-	if len(t.types) > 0 {
-		return t.types, nil
+func (t *tableMySQL) ScanFields(dsl string) ([]transform.Field, error) {
+	if t.fieldsCount > 0 {
+		return t.fields, nil
 	}
 	rows, err := t.db.Query(fmt.Sprintf("%s LIMIT 0", dsl))
 	if err != nil {
@@ -34,11 +34,20 @@ func (t *tableMySQL) ScanTypes(dsl string) ([]transform.Type, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.types = make([]transform.Type, 0, len(cts))
+	t.fieldsCount = len(cts)
+	t.fields = make([]transform.Field, 0, t.fieldsCount)
 	for _, v := range cts {
-		t.types = append(t.types, transform.Type(v.DatabaseTypeName()))
+		t.fields = append(t.fields, transform.Field{
+			Name: v.Name(),
+			Type: transform.Type(v.DatabaseTypeName()),
+		})
 	}
-	return t.types, nil
+	return t.fields, nil
+}
+
+func (t *tableMySQL) SetFields(fields []transform.Field) {
+	t.fieldsCount = len(fields)
+	t.fields = fields
 }
 
 func (t *tableMySQL) CreateTable() error {
@@ -59,4 +68,12 @@ func (t *tableMySQL) CreateWatermarkField() error {
 
 func (t *tableMySQL) RemoveWatermarkField() error {
 	return nil
+}
+
+func (t *tableMySQL) SetTableName(tableName string) {
+	t.table = tableName
+}
+
+func (t *tableMySQL) GetFieldsCount() int {
+	return t.fieldsCount
 }

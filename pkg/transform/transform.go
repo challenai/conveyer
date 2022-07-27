@@ -4,18 +4,23 @@ import "github.com/challenai/conveyer/pkg/codec"
 
 type Type string
 
+type Field struct {
+	Name string
+	Type
+}
+
 type Transformer interface {
 	// notify
-	SourceTypes() []Type
+	SourceFields() []Field
 
-	SinkTypes() []Type
-	SetSinkTypes([]Type)
+	SinkFields() []Field
+	SetSinkFields([]Field)
 
 	Castable() error
 	Cast(src []codec.Bytes) ([]any, error)
-	CastTypes() []Type
+	CastFields() []Field
 
-	CastableType(src Type, dest Type) error
+	CastableType(src Field, dest Field) error
 	CastByte(src codec.Bytes) (any, error)
-	CastType(Type) Type
+	CastType(Field) Field
 }
