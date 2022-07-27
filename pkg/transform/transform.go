@@ -2,7 +2,7 @@ package transform
 
 import "github.com/challenai/conveyer/pkg/codec"
 
-type Type byte
+type Type string
 
 type Transformer interface {
 	// notify
