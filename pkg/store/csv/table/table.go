@@ -8,12 +8,12 @@ import (
 )
 
 type tableCSV struct {
-	f           os.File
+	f           *os.File
 	fieldsCount int
 	fields      []transform.Field
 }
 
-func NewCSVTableManager(f os.File) table.TableManager {
+func NewCSVTableManager(f *os.File) table.TableManager {
 	tc := &tableCSV{
 		f: f,
 	}

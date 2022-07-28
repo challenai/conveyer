@@ -26,6 +26,7 @@ func (t *tableMySQL) ScanFields(dsl string) ([]transform.Field, error) {
 	if t.fieldsCount > 0 {
 		return t.fields, nil
 	}
+	fmt.Println(fmt.Sprintf("%s LIMIT 0", dsl))
 	rows, err := t.db.Query(fmt.Sprintf("%s LIMIT 0", dsl))
 	if err != nil {
 		return nil, err

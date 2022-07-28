@@ -11,16 +11,11 @@ import (
 	"github.com/challenai/conveyer/pkg/source"
 	mysqltable "github.com/challenai/conveyer/pkg/store/mysql/table"
 	"github.com/challenai/conveyer/pkg/table"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-type mysqlSource struct {
-	db *sql.DB
-	table.TableManager
-	desc MysqlSourceDescription
-}
-
 const (
-	SourceKind = "mysql"
+	KindMysql = "mysql"
 
 	DefaultHost = "localhost"
 	DefaultPort = 3306
@@ -38,8 +33,14 @@ const (
 	KeywordOffset = "Offset"
 )
 
-type MysqlSourceDescription struct {
-	desc.Source
+type mysqlSource struct {
+	db *sql.DB
+	table.TableManager
+	desc  desc.Source
+	extra *MysqlSourceExtraDescription
+}
+
+type MysqlSourceExtraDescription struct {
 
 	// basic connection information
 	Database string
@@ -59,23 +60,36 @@ type MysqlSourceDescription struct {
 	MaxIdleConns    int
 }
 
-func NewMysqlSource(desc MysqlSourceDescription) (source.Source, error) {
-	err := desc.validate()
+func NewMysqlSource(desc desc.Source) (source.Source, error) {
+	extra, ok := desc.Extra.(MysqlSourceExtraDescription)
+	if !ok {
+		return nil, errors.New("bad source extra description")
+	}
+
+	err := extra.validate()
 	if err != nil {
 		return nil, err
 	}
 
-	desc.setDefault()
+	s := &mysqlSource{
+		desc:  desc,
+		extra: &extra,
+	}
 
-	return &mysqlSource{
-		desc: desc,
-	}, nil
+	s.extra.setDefault()
+
+	err = validateDSL(desc.DSL)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
 func (ms *mysqlSource) Open() error {
 	var err error
 
-	ms.db, err = sql.Open(SourceKind, fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%s&loc=%s", ms.desc.User, ms.desc.Passwd, ms.desc.Host, ms.desc.Port, ms.desc.Database, ms.desc.Charset, ms.desc.ParseTime, ms.desc.Loc))
+	ms.db, err = sql.Open(KindMysql, fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%s&loc=%s", ms.extra.User, ms.extra.Passwd, ms.extra.Host, ms.extra.Port, ms.extra.Database, ms.extra.Charset, ms.extra.ParseTime, ms.extra.Loc))
 	if err != nil {
 		return err
 	}
@@ -95,6 +109,7 @@ func (ms *mysqlSource) Count(queryDSL string) (int, error) {
 }
 
 func (ms *mysqlSource) Query(queryDSL string, offset, limit int) ([][]codec.Bytes, error) {
+	fmt.Println(fmt.Sprintf("%s LIMIT %d OFFSET %d", queryDSL, limit, offset))
 	rows, err := ms.db.Query(fmt.Sprintf("%s LIMIT %d OFFSET %d", queryDSL, limit, offset))
 	if err != nil {
 		return nil, err
@@ -128,7 +143,7 @@ func (ms *mysqlSource) Close() error {
 	return nil
 }
 
-func (desc *MysqlSourceDescription) validate() error {
+func (desc *MysqlSourceExtraDescription) validate() error {
 	if desc.Database == "" {
 		return errors.New("config error: mysql database can't be empty")
 	}
@@ -136,7 +151,11 @@ func (desc *MysqlSourceDescription) validate() error {
 		desc.User = DefaultUser
 	}
 
-	upperDSL := strings.ToUpper(desc.DSL)
+	return nil
+}
+
+func validateDSL(queryDSL string) error {
+	upperDSL := strings.ToUpper(queryDSL)
 	if strings.Contains(upperDSL, KeywordLimit) {
 		return errors.New("config error: mysql query dsl include keywords LIMIT")
 	}
@@ -147,7 +166,7 @@ func (desc *MysqlSourceDescription) validate() error {
 	return nil
 }
 
-func (desc *MysqlSourceDescription) setDefault() {
+func (desc *MysqlSourceExtraDescription) setDefault() {
 	if desc.Host == "" {
 		desc.Host = DefaultHost
 	}
