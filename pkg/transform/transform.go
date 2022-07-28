@@ -21,6 +21,6 @@ type Transformer interface {
 	CastFields() []Field
 
 	CastableType(src Field, dest Field) error
-	CastByte(src codec.Bytes) (any, error)
-	CastType(Field) Field
+	CastBytes(index int, src codec.Bytes) (any, error)
+	CastField(Field) Field
 }
