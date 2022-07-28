@@ -1,6 +1,7 @@
 package desc
 
 type Sink struct {
+	Kind  string
 	DSL   string
 	Retry int
 	// Database                 string
@@ -9,4 +10,5 @@ type Sink struct {
 	CreateIndex              bool
 	CleanHistoryData         bool
 	RemoveWatermarkIfSucceed bool
+	Extra                    any
 }
