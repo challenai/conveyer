@@ -1,7 +1,8 @@
 package desc
 
 type Source struct {
-	Table string
+	Kind  string
 	DSL   string
 	Retry int
+	Extra any
 }

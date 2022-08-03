@@ -4,21 +4,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/challenai/conveyer/pkg/codec"
 	"github.com/challenai/conveyer/pkg/graph/desc"
 	"github.com/challenai/conveyer/pkg/source"
 	mysqltable "github.com/challenai/conveyer/pkg/store/mysql/table"
 	"github.com/challenai/conveyer/pkg/table"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-type mysqlSource struct {
-	db *sql.DB
-	table.TableManager
-	desc MysqlSourceDescription
-}
-
 const (
+	KindMysql = "mysql"
+
 	DefaultHost = "localhost"
 	DefaultPort = 3306
 	DefaultUser = "root"
@@ -30,10 +28,19 @@ const (
 	DefaultCharset   = "utf8mb4"
 	DefaultParseTime = "True"
 	DefaultLoc       = "Local"
+
+	KeywordLimit  = "LIMIT"
+	KeywordOffset = "Offset"
 )
 
-type MysqlSourceDescription struct {
-	desc.Source
+type mysqlSource struct {
+	db *sql.DB
+	table.TableManager
+	desc  desc.Source
+	extra *MysqlSourceExtraDescription
+}
+
+type MysqlSourceExtraDescription struct {
 
 	// basic connection information
 	Database string
@@ -53,13 +60,90 @@ type MysqlSourceDescription struct {
 	MaxIdleConns    int
 }
 
-func (desc *MysqlSourceDescription) validate() error {
-	if desc.Host == "" {
-		desc.Host = DefaultHost
+func NewMysqlSource(desc desc.Source) (source.Source, error) {
+	extra, ok := desc.Extra.(MysqlSourceExtraDescription)
+	if !ok {
+		return nil, errors.New("bad source extra description")
 	}
-	if desc.Port <= 0 {
-		desc.Port = DefaultPort
+
+	err := extra.validate()
+	if err != nil {
+		return nil, err
 	}
+
+	s := &mysqlSource{
+		desc:  desc,
+		extra: &extra,
+	}
+
+	s.extra.setDefault()
+
+	err = validateDSL(desc.DSL)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (ms *mysqlSource) Open() error {
+	var err error
+
+	ms.db, err = sql.Open(KindMysql, fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%s&loc=%s", ms.extra.User, ms.extra.Passwd, ms.extra.Host, ms.extra.Port, ms.extra.Database, ms.extra.Charset, ms.extra.ParseTime, ms.extra.Loc))
+	if err != nil {
+		return err
+	}
+
+	ms.TableManager = mysqltable.NewMySQLTableManager(ms.db)
+
+	return nil
+}
+
+func (ms *mysqlSource) Count(queryDSL string) (int, error) {
+	// rows, err := ms.db.Query(fmt.Sprintf("COUNT(%s)", queryDSL))
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	return 0, nil
+}
+
+func (ms *mysqlSource) Query(queryDSL string, offset, limit int) ([][]codec.Bytes, error) {
+	fmt.Println(fmt.Sprintf("%s LIMIT %d OFFSET %d", queryDSL, limit, offset))
+	rows, err := ms.db.Query(fmt.Sprintf("%s LIMIT %d OFFSET %d", queryDSL, limit, offset))
+	if err != nil {
+		return nil, err
+	}
+
+	var records [][]codec.Bytes
+	r := make([]any, ms.TableManager.GetFieldsCount())
+	for rows.Next() {
+		for i := range r {
+			r[i] = new(sql.RawBytes)
+		}
+
+		err = rows.Scan(r...)
+		if err != nil {
+			return nil, err
+		}
+
+		record := make([]codec.Bytes, ms.TableManager.GetFieldsCount())
+		for i, v := range r {
+			ptr, _ := v.(*sql.RawBytes)
+			record[i] = (codec.Bytes)(*ptr)
+		}
+
+		records = append(records, record)
+	}
+
+	return records, nil
+}
+
+func (ms *mysqlSource) Close() error {
+	return nil
+}
+
+func (desc *MysqlSourceExtraDescription) validate() error {
 	if desc.Database == "" {
 		return errors.New("config error: mysql database can't be empty")
 	}
@@ -67,14 +151,27 @@ func (desc *MysqlSourceDescription) validate() error {
 		desc.User = DefaultUser
 	}
 
-	if desc.Charset == "" {
-		desc.Charset = DefaultCharset
+	return nil
+}
+
+func validateDSL(queryDSL string) error {
+	upperDSL := strings.ToUpper(queryDSL)
+	if strings.Contains(upperDSL, KeywordLimit) {
+		return errors.New("config error: mysql query dsl include keywords LIMIT")
 	}
-	if desc.ParseTime == "" {
-		desc.ParseTime = DefaultParseTime
+	if strings.Contains(upperDSL, KeywordOffset) {
+		return errors.New("config error: mysql query dsl include keywords OFFSET")
 	}
-	if desc.Loc == "" {
-		desc.Loc = DefaultLoc
+
+	return nil
+}
+
+func (desc *MysqlSourceExtraDescription) setDefault() {
+	if desc.Host == "" {
+		desc.Host = DefaultHost
+	}
+	if desc.Port <= 0 {
+		desc.Port = DefaultPort
 	}
 
 	if desc.ConnMaxLifetime <= 0 {
@@ -86,41 +183,14 @@ func (desc *MysqlSourceDescription) validate() error {
 	if desc.MaxIdleConns <= 0 {
 		desc.MaxIdleConns = DefaultMaxIdleConns
 	}
-	return nil
-}
 
-func NewMysqlSource(desc MysqlSourceDescription) (source.Source, error) {
-	err := desc.validate()
-	if err != nil {
-		return nil, err
+	if desc.Charset == "" {
+		desc.Charset = DefaultCharset
 	}
-
-	return &mysqlSource{
-		desc: desc,
-	}, nil
-}
-
-func (ms *mysqlSource) Open() error {
-	var err error
-
-	ms.db, err = sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%s&loc=%s", ms.desc.User, ms.desc.Passwd, ms.desc.Host, ms.desc.Port, ms.desc.Database, ms.desc.Charset, ms.desc.ParseTime, ms.desc.Loc))
-	if err != nil {
-		return err
+	if desc.ParseTime == "" {
+		desc.ParseTime = DefaultParseTime
 	}
-
-	ms.TableManager = mysqltable.NewMySQLTableManager(ms.db, ms.desc.Table)
-
-	return nil
-}
-
-func (ms *mysqlSource) Count(query string) (int, error) {
-	return 0, nil
-}
-
-func (ms *mysqlSource) Query(query string, offset, limit int) ([][]codec.Bytes, error) {
-	return nil, nil
-}
-
-func (ms *mysqlSource) Close() error {
-	return nil
+	if desc.Loc == "" {
+		desc.Loc = DefaultLoc
+	}
 }
