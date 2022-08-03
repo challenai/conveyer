@@ -1,7 +1,5 @@
 package transform
 
-import "github.com/challenai/conveyer/pkg/codec"
-
 type Type string
 
 type Field struct {
@@ -11,16 +9,16 @@ type Field struct {
 
 type Transformer interface {
 	// notify
-	SourceFields() []Field
-
-	SinkFields() []Field
+	SetSourceFields([]Field)
 	SetSinkFields([]Field)
 
-	Castable() error
-	Cast(src []codec.Bytes) ([]any, error)
+	Castable() (bool, error)
+
 	CastFields() []Field
 
-	CastableType(src Field, dest Field) error
-	CastBytes(index int, src codec.Bytes) (any, error)
-	CastField(Field) Field
+	Cast(src any) (any, error)
+
+	// 	CastableType(src Field, dest Field) error
+	// 	CastBytes(index int, src codec.Bytes) (any, error)
+	// 	CastField(Field) Field
 }

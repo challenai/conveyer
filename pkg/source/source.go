@@ -1,14 +1,13 @@
 package source
 
 import (
-	"github.com/challenai/conveyer/pkg/codec"
 	"github.com/challenai/conveyer/pkg/table"
 )
 
 type Source interface {
 	Open() error
-	Count(dsl string) (int, error)
-	Query(dsl string, offset, limit int) ([][]codec.Bytes, error)
+	Count(dsl string) (int64, error)
+	Query(dsl string, offset, limit int) (any, error)
 	Close() error
 	table.TableManager
 }
